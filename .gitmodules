@@ -1,0 +1,3 @@
+[submodule "Deformable-DETR"]
+	path = Deformable-DETR
+	url = git@github.com:fundamentalvision/Deformable-DETR.git
