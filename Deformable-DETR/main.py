@@ -336,12 +336,12 @@ def main(args):
                         torch.save(coco_evaluator.coco_eval["bbox"].eval,
                                    output_dir / "eval" / name)
 
-                    if epoch % 50 == 0:
+                    if epoch % 5 == 0 or epoch == args.epochs - 1:
                         # TODO not sure if this file will end up being too big
                         # I think it's the COCO precision/recall metrics
                         # in some format...
                         # let's track it just in case to start!
-                        wandb.save(str(output_dir / "eval" / filenames[-1]))
+                        wandb.save(f'eval/{epoch:03}.pth')
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
