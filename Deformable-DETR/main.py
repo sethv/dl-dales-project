@@ -25,9 +25,15 @@ from datasets import build_dataset, get_coco_api_from_dataset
 from engine import evaluate, train_one_epoch
 from models import build_model
 
+import wandb
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Deformable DETR Detector', add_help=False)
+
+    # Our wandb metadata
+    parser.add_argument('--wb_name', required=True, help='Weights & Biases experiment name - just 1-2 words', type=str)
+    parser.add_argument('--wb_notes', required=True, help='Weights & Biases description of your experiment - length of a git commit msg', type=str)
+
     parser.add_argument('--lr', default=2e-4, type=float)
     parser.add_argument('--lr_backbone_names', default=["backbone.0"], type=str, nargs='+')
     parser.add_argument('--lr_backbone', default=2e-5, type=float)
@@ -134,6 +140,10 @@ def main(args):
         assert args.masks, "Frozen training is meant for segmentation only"
     print(args)
 
+    # Save our Wandb metadata
+    wandb.init(entity='dl-project', project='dl-final-project', name=args.wb_name, notes=args.wb_notes)
+    wandb.config.epochs = args.epochs
+
     device = torch.device(args.device)
 
     # fix the seed for reproducibility
@@ -148,9 +158,15 @@ def main(args):
     model_without_ddp = model
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print('number of params:', n_parameters)
+    wandb.config.n_parameters = n_parameters
 
     dataset_train = build_dataset(image_set='train', args=args)
     dataset_val = build_dataset(image_set='val', args=args)
+
+    # Save metadata about training + val datasets and batch size
+    wandb.config.len_dataset_train = len(dataset_train)
+    wandb.config.len_dataset_val = len(dataset_val)
+    wandb.config.batch_size = args.batch_size
 
     if args.distributed:
         if args.cache_mode:
@@ -201,6 +217,12 @@ def main(args):
             "lr": args.lr * args.lr_linear_proj_mult,
         }
     ]
+
+    # Not sure if we should save all hyperparameters in wandb.config?
+    # just start with a few important ones
+    wandb.config.lr = args.lr
+    wandb.config.lr_backbone = args.lr_backbone
+
     if args.sgd:
         optimizer = torch.optim.SGD(param_dicts, lr=args.lr, momentum=0.9,
                                     weight_decay=args.weight_decay)
@@ -297,6 +319,7 @@ def main(args):
                      **{f'test_{k}': v for k, v in test_stats.items()},
                      'epoch': epoch,
                      'n_parameters': n_parameters}
+        wandb.log(log_stats)
 
         if args.output_dir and utils.is_main_process():
             with (output_dir / "log.txt").open("a") as f:
@@ -312,6 +335,13 @@ def main(args):
                     for name in filenames:
                         torch.save(coco_evaluator.coco_eval["bbox"].eval,
                                    output_dir / "eval" / name)
+
+                    if epoch % 50 == 0:
+                        # TODO not sure if this file will end up being too big
+                        # I think it's the COCO precision/recall metrics
+                        # in some format...
+                        # let's track it just in case to start!
+                        wandb.save(str(output_dir / "eval" / filenames[-1]))
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
