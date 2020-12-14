@@ -31,6 +31,7 @@ def get_args_parser():
     parser = argparse.ArgumentParser('Deformable DETR Detector', add_help=False)
 
     # Our wandb metadata
+    parser.add_argument('--no_wb', default=False, action='store_true') # include this to turn off W&B
     parser.add_argument('--wb_name', required=True, help='Weights & Biases experiment name - just 1-2 words', type=str)
     parser.add_argument('--wb_notes', required=True, help='Weights & Biases description of your experiment - length of a git commit msg', type=str)
 
@@ -141,7 +142,8 @@ def main(args):
     print(args)
 
     # Save our Wandb metadata
-    wandb.init(entity='dl-project', project='dl-final-project', name=args.wb_name, notes=args.wb_notes)
+    if not args.no_wb:
+        wandb.init(entity='dl-project', project='dl-final-project', name=args.wb_name, notes=args.wb_notes)
     wandb.config.epochs = args.epochs
 
     device = torch.device(args.device)
@@ -319,7 +321,9 @@ def main(args):
                      **{f'test_{k}': v for k, v in test_stats.items()},
                      'epoch': epoch,
                      'n_parameters': n_parameters}
-        wandb.log(log_stats)
+        if not args.no_wb:
+            wandb.log(log_stats)
+        print("train_loss: ", log_stats['train_loss'])
 
         if args.output_dir and utils.is_main_process():
             with (output_dir / "log.txt").open("a") as f:
