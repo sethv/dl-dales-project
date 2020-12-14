@@ -5,10 +5,10 @@
 import json
 
 input_json_file = "Deformable-DETR/data/coco/annotations/instances_train2017_orig.json"
-output_json_file = "Deformable-DETR/data/coco/annotations/instances_train2017.json"
+output_json_file = "Deformable-DETR/data/coco/annotations/instances_train2017_1000_person_bird.json"
 url_file = "urls.txt"
-num_images = 20  # how many images
-category_ids_to_keep = {1}  # keep only person instances
+num_images = 1000  # how many images
+category_ids_to_keep = {1,15}  # keep only person instances
 filtering_classes = len(category_ids_to_keep) > 0  # True/False
 
 print("Loading original annotations file: ", input_json_file)
