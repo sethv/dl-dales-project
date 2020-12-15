@@ -7,12 +7,8 @@ import collections
 
 
 # Set up args here
-
-# old_anns_suffix = "1000_person_bird"
-# old_anns_name = "instances_train2017_orig"
-# old_anns_name = "instances_train2017_10k_10classes_anyarea"
-old_anns_name = "instances_train2017"
-new_anns_name = "instances_train2017_5classes_areagt100"
+old_anns_name = "instances_val2017"
+new_anns_name = "instances_val2017_5classes_areagt100"
 
 input_json_file = f"Deformable-DETR/data/coco/annotations/{old_anns_name}.json"
 output_json_file = f"Deformable-DETR/data/coco/annotations/{new_anns_name}.json"
@@ -21,14 +17,19 @@ url_file = f"urls_{new_anns_name}.txt"
 category_ids_to_keep = {
     # 1, # person
     5, # airplane
+    7, # train
     # 13, # stop sign
-    16, # bird
+    # 16, # bird
     # 17, # cat
+    # 22, # elephant
     23, # bear
-    # 25, # giraffe
-    44, # bottle
+    24, # zebra
+    25, # giraffe
+    # 38, # kite
+    # 44, # bottle
     # 77, # cell phone
-    88, # teddy bear (see if it can tell apart from bear)
+    # 82, # refrigerator
+    # 88, # teddy bear (see if it can tell apart from bear)
 }
 max_images = 1000000000  # how many images to keep
 keep_iscrowd = True  # ignore annotations with 'iscrowd' = 1
