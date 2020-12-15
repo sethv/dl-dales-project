@@ -75,11 +75,13 @@ class BackboneBase(nn.Module):
             # return_layers = {"layer1": "0", "layer2": "1", "layer3": "2", "layer4": "3"}
             return_layers = {"layer2": "0", "layer3": "1", "layer4": "2"}
             self.strides = [8, 16, 32]
-            self.num_channels = [512, 1024, 2048]
+            self.num_channels = [512, 1024, 2048]  # resnet50
+            # resnet18 [128,256,512], mobilenetv2 [32,96,320]
         else:
             return_layers = {'layer4': "0"}
             self.strides = [32]
-            self.num_channels = [512]
+            self.num_channels = [512]  # for resnet18
+            # resnet50 [2048], mobilenetv2 [320]
         self.body = IntermediateLayerGetter(backbone, return_layers=return_layers)
 
     def forward(self, tensor_list: NestedTensor):
