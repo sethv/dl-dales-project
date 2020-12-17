@@ -68,20 +68,59 @@ class BackboneBase(nn.Module):
 
     def __init__(self, backbone: nn.Module, train_backbone: bool, return_interm_layers: bool):
         super().__init__()
-        for name, parameter in backbone.named_parameters():
-            if not train_backbone or 'layer2' not in name and 'layer3' not in name and 'layer4' not in name:
-                parameter.requires_grad_(False)
-        if return_interm_layers:
-            # return_layers = {"layer1": "0", "layer2": "1", "layer3": "2", "layer4": "3"}
-            return_layers = {"layer2": "0", "layer3": "1", "layer4": "2"}
-            self.strides = [8, 16, 32]
-            self.num_channels = [512, 1024, 2048]  # resnet50
-            # resnet18 [128,256,512], mobilenetv2 [32,96,320]
+
+        if isinstance(backbone, torchvision.models.resnet.ResNet):
+            # Just using DD authors' existing code in this case
+            for name, parameter in backbone.named_parameters():
+                if not train_backbone or 'layer2' not in name and 'layer3' not in name and 'layer4' not in name:
+                    parameter.requires_grad_(False)
+            if return_interm_layers:
+                # return_layers = {"layer1": "0", "layer2": "1", "layer3": "2", "layer4": "3"}
+                return_layers = {"layer2": "0", "layer3": "1", "layer4": "2"}
+                self.strides = [8, 16, 32]
+                self.num_channels = [512, 1024, 2048]
+            else:
+                return_layers = {'layer4': "0"}
+                self.strides = [32]
+                self.num_channels = [2048]
+
+        elif isinstance(backbone, torchvision.models.mobilenet.MobileNetV2):
+            # This freezes training for the earlier layers in the backbone
+            # For MobileNetV2, we want to freeze only the earliest layers
+            # roughly equivalent to layer1 of ResNet, i.e. layer numbers < 4
+            print("Loading and modifying mobilenetv2...")
+            for name, parameter in backbone.named_parameters():
+                layer_number = int(name.split(".")[1])  # features.6.conv etc.
+                if not train_backbone or layer_number < 4:
+                    print("Freezing backbone layer", name)
+                    parameter.requires_grad_(False)
+
+            # Group layers like ResNet
+            backbone.layer1 = backbone.features[0:4]
+            backbone.layer2 = backbone.features[4:7]
+            backbone.layer3 = backbone.features[7:14]
+            backbone.layer4 = backbone.features[14:-1]
+            backbone.features = None
+            backbone.classifier = None
+
+            if return_interm_layers:
+                # Mobilenetv2 workaround
+                self.strides = [12345,98765,111111] # want this to fail, not sure what it does
+                self.num_channels = [32,96,320] # mobilenet_v2 feature maps have these # channels
+
+                return_layers = {
+                    "layer2": "0",
+                    "layer3": "1",
+                    "layer4": "2",
+                }
+
+            else:
+                return_layers = {'layer4': "0"}
+                self.strides = [12345] # want this to fail, not sure what it does
+                self.num_channels = [320] # mobilenet last feature map before classifier has 320 channels
         else:
-            return_layers = {'layer4': "0"}
-            self.strides = [32]
-            self.num_channels = [2048]  # for resnet50
-            # resnet18 [512], mobilenetv2 [320]
+            raise NotImplementedError("This backbone is not supported", type(backbone), backbone)
+
         self.body = IntermediateLayerGetter(backbone, return_layers=return_layers)
 
     def forward(self, tensor_list: NestedTensor):
@@ -102,11 +141,18 @@ class Backbone(BackboneBase):
                  return_interm_layers: bool,
                  dilation: bool):
         norm_layer = FrozenBatchNorm2d
-        backbone = getattr(torchvision.models, name)(
-            replace_stride_with_dilation=[False, False, dilation],
-            pretrained=is_main_process(), norm_layer=norm_layer)
-        # assert name not in ('resnet18', 'resnet34'), "number of channels are hard coded"
+        if name.startswith("resnet"):
+            backbone = getattr(torchvision.models, name)(
+                replace_stride_with_dilation=[False, False, dilation],
+                pretrained=is_main_process(), norm_layer=norm_layer)
+        else:
+            assert name =="mobilenet_v2", f"Backbone {name} not supported"
+            backbone = getattr(torchvision.models, name)(
+                pretrained=is_main_process(), norm_layer=norm_layer)
+
+        assert name not in ('resnet18', 'resnet34'), "number of channels are hard coded"
         super().__init__(backbone, train_backbone, return_interm_layers)
+
         if dilation:
             self.strides[-1] = self.strides[-1] // 2
 
