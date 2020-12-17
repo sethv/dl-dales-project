@@ -132,6 +132,73 @@ def get_args_parser():
 
     return parser
 
+@torch.no_grad()
+def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device):
+    model.eval()
+
+    class_id_to_label = {
+        0: "airplane",
+        1: "train",
+        2: "bear",
+        3: "zebra",
+        4: "giraffe"
+    }
+    count = 0
+
+    for samples, targets in enumerate(dataloader):
+        samples = samples.to(device)
+        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+        batch_size = len(samples)
+
+        outputs = model(samples)
+        orig_target_sizes = torch.stack([t["orig_size"] for t in targets], dim=0)
+        results = postprocessors['bbox'](outputs, orig_target_sizes)
+
+        # each image
+        for i in range(batch_size):
+            image = samples[i]
+            result = results[i]
+            target = targets[i]
+
+            scores = result['scores']
+            labels = result['labels']
+            boxes = result['boxes']
+            
+            box_data = []
+
+            # each box
+            for j in range(len(labels)):
+                score = scores[j]
+                label = labels[j]
+                box = boxes[j]
+
+                box_data_j = {
+                    "position": {
+                        "minX":
+                        "maxX":
+                        "minY":
+                        "maxY":
+                    },
+                    "class_id": label,
+                    "box_caption": "%s (%.3f)" % (class_id_to_label[label], score),
+                    "scores": {"score": score}
+                }
+
+                box_data.append(box_data_j)
+
+            boxes = {
+                "predictions": {
+                    "box_data": box_data,
+                    "class_labels": class_id_to_label
+                },
+                #"ground_truth": {} # would be nice to have
+            }
+
+            img = wandb.Image(image, boxes)
+            wandb.log({"{}".format(count): img})
+            count += 1
+
+            # if count > num_img_log - 1: return
 
 def main(args):
     utils.init_distributed_mode(args)
@@ -350,6 +417,8 @@ def main(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
+
+    #visualize_bbox(model, postprocessors, data_loader_val, device)
 
 
 if __name__ == '__main__':
