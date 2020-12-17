@@ -226,8 +226,14 @@ def main(args):
 
     model_without_ddp = model
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print('number of params:', n_parameters)
+    print('number of trainable params:', n_parameters)
     wandb.config.n_parameters = n_parameters
+    wandb.config.n_trainable_parameters = n_parameters  # better name
+
+    # Log total # of model parameters (including frozen) to W&B
+    n_total_parameters = sum(p.numel() for p in model.parameters())
+    print('total number of parameters:', n_total_parameters)
+    wandb.config.n_total_parameters = n_total_parameters
 
     dataset_train = build_dataset(image_set='train', args=args)
     dataset_val = build_dataset(image_set='val', args=args)
@@ -335,7 +341,7 @@ def main(args):
             for pg, pg_old in zip(optimizer.param_groups, p_groups):
                 pg['lr'] = pg_old['lr']
                 pg['initial_lr'] = pg_old['initial_lr']
-            print(optimizer.param_groups)
+            # print(optimizer.param_groups)
             lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
             # todo: this is a hack for doing experiment that resume from checkpoint and also modify lr scheduler (e.g., decrease lr in advance).
             args.override_resumed_lr_drop = True
