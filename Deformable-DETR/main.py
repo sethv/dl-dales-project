@@ -145,58 +145,58 @@ def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device):
     }
     count = 0
 
-    for samples, targets in enumerate(dataloader):
-        samples = samples.to(device)
-        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
-        batch_size = len(samples)
+    # for samples, targets in enumerate(dataloader):
+    #     samples = samples.to(device)
+    #     targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+    #     batch_size = len(samples)
 
-        outputs = model(samples)
-        orig_target_sizes = torch.stack([t["orig_size"] for t in targets], dim=0)
-        results = postprocessors['bbox'](outputs, orig_target_sizes)
+    #     outputs = model(samples)
+    #     orig_target_sizes = torch.stack([t["orig_size"] for t in targets], dim=0)
+    #     results = postprocessors['bbox'](outputs, orig_target_sizes)
 
-        # each image
-        for i in range(batch_size):
-            image = samples[i]
-            result = results[i]
-            target = targets[i]
+    #     # each image
+    #     for i in range(batch_size):
+    #         image = samples[i]
+    #         result = results[i]
+    #         target = targets[i]
 
-            scores = result['scores']
-            labels = result['labels']
-            boxes = result['boxes']
+    #         scores = result['scores']
+    #         labels = result['labels']
+    #         boxes = result['boxes']
             
-            box_data = []
+    #         box_data = []
 
-            # each box
-            for j in range(len(labels)):
-                score = scores[j]
-                label = labels[j]
-                box = boxes[j]
+    #         # each box
+    #         for j in range(len(labels)):
+    #             score = scores[j]
+    #             label = labels[j]
+    #             box = boxes[j]
 
-                box_data_j = {
-                    "position": {
-                        "minX":
-                        "maxX":
-                        "minY":
-                        "maxY":
-                    },
-                    "class_id": label,
-                    "box_caption": "%s (%.3f)" % (class_id_to_label[label], score),
-                    "scores": {"score": score}
-                }
+    #             box_data_j = {
+    #                 "position": {
+    #                     "minX":
+    #                     "maxX":
+    #                     "minY":
+    #                     "maxY":
+    #                 },
+    #                 "class_id": label,
+    #                 "box_caption": "%s (%.3f)" % (class_id_to_label[label], score),
+    #                 "scores": {"score": score}
+    #             }
 
-                box_data.append(box_data_j)
+    #             box_data.append(box_data_j)
 
-            boxes = {
-                "predictions": {
-                    "box_data": box_data,
-                    "class_labels": class_id_to_label
-                },
-                #"ground_truth": {} # would be nice to have
-            }
+    #         boxes = {
+    #             "predictions": {
+    #                 "box_data": box_data,
+    #                 "class_labels": class_id_to_label
+    #             },
+    #             #"ground_truth": {} # would be nice to have
+    #         }
 
-            img = wandb.Image(image, boxes)
-            wandb.log({"{}".format(count): img})
-            count += 1
+    #         img = wandb.Image(image, boxes)
+    #         wandb.log({"{}".format(count): img})
+    #         count += 1
 
             # if count > num_img_log - 1: return
 
@@ -366,8 +366,13 @@ def main(args):
         train_stats = train_one_epoch(
             model, criterion, data_loader_train, optimizer, device, epoch, args.clip_max_norm)
         lr_scheduler.step()
+
         if args.output_dir:
-            checkpoint_paths = [output_dir / 'checkpoint.pth']
+            checkpoint_file_for_wb = str(output_dir / f'{wandb.run.id}_checkpoint{epoch:04}.pth')
+            checkpoint_paths = [
+                output_dir / 'checkpoint.pth',
+                checkpoint_file_for_wb
+            ]
             # extra checkpoint before LR drop and every 5 epochs
             if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % 5 == 0:
                 checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
@@ -379,6 +384,9 @@ def main(args):
                     'epoch': epoch,
                     'args': args,
                 }, checkpoint_path)
+            
+            # Save model checkpoint to W&B
+            wandb.save(checkpoint_file_for_wb)
 
         test_stats, coco_evaluator = evaluate(
             model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
@@ -400,19 +408,20 @@ def main(args):
             if coco_evaluator is not None:
                 (output_dir / 'eval').mkdir(exist_ok=True)
                 if "bbox" in coco_evaluator.coco_eval:
-                    filenames = ['latest.pth']
+                    eval_filename_for_wb = f'{wandb.run.id}_eval_{epoch:04}.pth'
+                    eval_path_for_wb = str(output_dir / "eval" / eval_filename_for_wb)
+                    filenames = ['latest.pth', eval_filename_for_wb]
                     if epoch % 50 == 0:
                         filenames.append(f'{epoch:03}.pth')
                     for name in filenames:
                         torch.save(coco_evaluator.coco_eval["bbox"].eval,
                                    output_dir / "eval" / name)
 
-                    if epoch % 5 == 0 or epoch == args.epochs - 1:
-                        # TODO not sure if this file will end up being too big
-                        # I think it's the COCO precision/recall metrics
-                        # in some format...
-                        # let's track it just in case to start!
-                        wandb.save(f'eval/{epoch:03}.pth')
+                    # TODO not sure if this file will end up being too big
+                    # I think it's the COCO precision/recall metrics
+                    # in some format...
+                    # let's track it just in case to start!
+                    wandb.save(eval_path_for_wb)
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
