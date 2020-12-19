@@ -215,7 +215,7 @@ def main(args):
 
     # Save our Wandb metadata
     if not args.no_wb:
-        wandb.init(entity='dl-project', project='dl-final-project', name=args.wb_name, notes=args.wb_notes)
+        wandb.init(entity='dl-project', project='dl-final-project', name=args.wb_name, notes=args.wb_notes, reinit=True)
     wandb.config.epochs = args.epochs
 
     device = torch.device(args.device)
@@ -394,6 +394,13 @@ def main(args):
                      **{f'test_{k}': v for k, v in test_stats.items()},
                      'epoch': epoch,
                      'n_parameters': n_parameters}
+        
+        # Save the COCO metrics properly
+        metric_name = ["AP", "AP50", "AP75", "APs", "APm", "APl",
+                "AR@1", "AR@10", "AR@100", "ARs", "ARm", "ARl"]
+        for i, metric_val in enumerate(log_stats["test_coco_eval_bbox"]):
+            log_stats[metric_name[i]] = metric_val
+        
         if not args.no_wb:
             wandb.log(log_stats)
         print("train_loss: ", log_stats['train_loss'])
@@ -401,6 +408,7 @@ def main(args):
         if args.output_dir and utils.is_main_process():
             with (output_dir / "log.txt").open("a") as f:
                 f.write(json.dumps(log_stats) + "\n")
+            wandb.save(str(output_dir / "log.txt"))
 
             # for evaluation logs
             if coco_evaluator is not None:
