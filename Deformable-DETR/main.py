@@ -406,7 +406,7 @@ def main(args):
         # Save the COCO metrics properly
         metric_name = ["AP", "AP50", "AP75", "APs", "APm", "APl",
                 "AR@1", "AR@10", "AR@100", "ARs", "ARm", "ARl"]
-        for metric_val in test_stats["test_coco_eval_bbox"]:
+        for metric_val in log_stats["test_coco_eval_bbox"]:
             log_stats[metric_name] = metric_val
         
         if not args.no_wb:
