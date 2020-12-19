@@ -84,7 +84,7 @@ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.884
 ### 
 
 ## Video
-* 2-3 minute video explaining the work TODO link
+https://github.com/sethv/dl-dales-project/blob/main/project-video.mp4
 
 ## GitHub Repository
 https://github.com/sethv/dl-dales-project
