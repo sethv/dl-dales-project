@@ -210,7 +210,7 @@ def main(args):
 
     # Save our Wandb metadata
     if not args.no_wb:
-        wandb.init(entity='dl-project', project='dl-final-project', name=args.wb_name, notes=args.wb_notes)
+        wandb.init(entity='dl-project', project='dl-final-project', name=args.wb_name, notes=args.wb_notes, reinit=True)
     wandb.config.epochs = args.epochs
 
     device = torch.device(args.device)
