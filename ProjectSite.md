@@ -13,6 +13,7 @@ https://github.com/sethv/dl-dales-project/blob/main/project-video.mp4
 https://github.com/sethv/dl-dales-project
 
 ## Loss and Precision-Recall Plots
+_Note: due to Colab crashes we often had to resume runs, so the time series may look strange_
 https://wandb.ai/dl-project/dl-final-project/reports/Metrics-and-losses-for-our-models--VmlldzozNzI5Mzk?accessToken=qmag1px2080flylj23ha71ifed05bgqwdd22s4ys2pz33z76nyvsgnf485195vkk
 
 ## Problem Description
@@ -68,13 +69,16 @@ of a standard Resnet-50. The network gradually increases the number of channels
 and progressively downscales the feature maps, so there may be important
 spatial information that we can use from earlier layers with larger feature maps.
 
-We modify `Deformable-DETR/models/backbone.py` to support
-[MobileNetV2](https://pytorch.org/docs/stable/_modules/torchvision/models/mobilenet.html#mobilenet_v2),
-a standard backbone used in many low-resource settings (e.g. phones). 
+We modify `Deformable-DETR/models/backbone.py` to support the
+[MobileNetV2](https://arxiv.org/abs/1801.04381) backbone, which is often used in
+low-resource or low-latency settings (e.g. phones or other deviecs).
 In order to make this work, we perform network surgery by extracting intermediate
 layers of MobileNetV2, with 32 channels at "layer2", 96 channels at "layer3", and
 320 channels at what we call "layer4" (the last feature map before the classifier
 head, which we remove).
+
+We used the standard `torchvision` implementation of [MobileNetV2](https://pytorch.org/docs/stable/_modules/torchvision/models/mobilenet.html#mobilenet_v2)
+initialized with pretrained weights (from ImageNet).
 
 ## Pre-Existing Work
 Our repository contains the Deformable DETR repository, which we used to get
@@ -84,7 +88,8 @@ DETR code still provides the foundation that our project stands on, even with
 our changes. We only modified the training script and arguments specifically
 for our experiment, and left most of the hyperparameters etc. untouched.
 
-**Warning: we may have introduced new bugs!**
+**Warning: we likely have introduced new bugs, especially since we did not
+consider any distributed training.**
 
 ## New Components
 We added support in the Deformable DETR backbone code to load the standard
@@ -109,7 +114,8 @@ layers to 3 each, with a reduced hidden dimension (for the weight matrices) of 1
 of the early convolutional layers in MobileNetV2 remain frozen.
 Due to Colab issues we trained for 50 epochs with the first 16 at learning rate of 2e-4,
 the next 24 being at 2e-5, and the last 10 at 2e-6. This differs from the Deformable-DETR
-default training schedule of 40 epochs at lr=2e-4 followed by 10 at lr=2e-5.
+default training schedule of 40 epochs at lr=2e-4 followed by 10 at lr=2e-5. Each epoch
+takes approximately 12-13 minutes on a Colab NVIDIA Tesla V100 GPU.
 
 Here are the official COCO precision/recall metrics on the COCO subset described above:
 ```
@@ -135,9 +141,10 @@ nobody produces such high scores on the full COCO `val2017` dataset!
 Our best model on the full COCO dataset is still training, but is using a
 MobileNetV2 backbone with 2 encoder layers and 3 decoder transformers all with dimension 64.
 We enable the box refinement option as it appears to give a free boost in accuracy without
-a notable decrease in speed.
+a notable decrease in speed. This results in 2940399 trainable parameters.
 
-Here are the metrics after 12 epochs at a learning rate of 2e-4.
+Here are the metrics after 13 epochs at a learning rate of 2e-4 - each epoch takes
+approximately ~90 minutes on a Colab NVIDIA Tesla V100 GPU.
 ```
 IoU metric: bbox
  Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.231
