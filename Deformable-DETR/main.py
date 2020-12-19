@@ -137,11 +137,11 @@ def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device):
     model.eval()
 
     class_id_to_label = {
-        0: "airplane",
-        1: "train",
-        2: "bear",
-        3: "zebra",
-        4: "giraffe"
+        5: "airplane",
+        7: "train",
+        23: "bear",
+        24: "zebra",
+        25: "giraffe"
     }
     num_img_log = 10
     count = 0
@@ -158,10 +158,11 @@ def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device):
         outputs = model(samples)
         orig_target_sizes = torch.stack([t["orig_size"] for t in targets], dim=0)
         results = postprocessors['bbox'](outputs, orig_target_sizes)
+        images, masks = samples.decompose()
 
         # each image
         for i in range(batch_size):
-            image = samples[i]
+            image = images[i]
             result = results[i]
             target = targets[i]
 
@@ -173,8 +174,8 @@ def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device):
 
             # each box
             for j in range(len(labels)):
-                score = scores[j]
-                label = labels[j]
+                score = scores[j].item()
+                label = labels[j].item()
                 box = boxes[j]
 
                 box_data_j = {
