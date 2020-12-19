@@ -146,11 +146,7 @@ def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device):
     num_img_log = 10
     count = 0
 
-    metric_logger = utils.MetricLogger(delimiter="  ")
-    metric_logger.add_meter('class_error', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
-    header = 'Test:'
-
-    for samples, targets in metric_logger.log_every(dataloader, 10, header):
+    for samples, targets in dataloader:
         samples = samples.to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
         batch_size = len(targets)
