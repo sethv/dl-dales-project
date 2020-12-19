@@ -150,8 +150,8 @@ Command to reproduce (with our subset of annotations in place, see the Colab not
 !python -u main.py \
 --output_dir output \
 --backbone mobilenet_v2 \
---wb_name "[subset COCO] mobilenet_v2 3_enc_3_dec_dim64"
---wb_notes "Default parameters & box refine but mobilenet_v2 backbone, reduce # of encoder decoder layers and their hidden dim"
+--wb_name "[subset COCO] mobilenet_v2 3_enc_3_dec_dim64" \
+--wb_notes "Default parameters & box refine but mobilenet_v2 backbone, reduce # of encoder decoder layers and their hidden dim" \
 --enc_layers 3 \
 --dec_layers 3 \
 --hidden_dim 128 \
@@ -189,8 +189,8 @@ Command to reproduce:
 !python -u main.py \
 --output_dir output \
 --backbone mobilenet_v2 \
---wb_name "[full COCO] mobilenet_v2 2_enc_3_dec_dim64"
---wb_notes "(Resume with same LR) Default parameters & box refine but mobilenet_v2 backbone, reduce # of encoder decoder layers and their hidden dim"
+--wb_name "[full COCO] mobilenet_v2 2_enc_3_dec_dim64" \
+--wb_notes "(Resume with same LR) Default parameters & box refine but mobilenet_v2 backbone, reduce # of encoder decoder layers and their hidden dim" \
 --enc_layers 2 \
 --dec_layers 3 \
 --hidden_dim 64 \
