@@ -2,27 +2,44 @@
 Group: Seth Vanderwilt, Zach Wilson, Zack Barnes, Richard Park
 
 ## Problem Description
-* What was the problem we were trying to solve?
-* What did we do to solve the problem?
-* Why is the problem important?
+Our project looks at implementing an end-to-end object detector using a modified
+version of Facebook's DETR project. The project that we worked on is based on
+the [Deformable DETR](https://github.com/fundamentalvision/Deformable-DETR)
+project by Xizhou Zhu, Weijie Su, Lewei Lu, Bin Li, Xiaogang Wang, and Jifeng Dai.
+Deformable DETR modifies the original DETR model by using a sampling-based
+attention mechanism.
 
 ## Project Setup
-* What frameworks did we use?
-* How can someone set up the project if they want to run it themselves?
+Our project uses [PyTorch](https://pytorch.org/) as the machine learning
+framework and uses [Weights & Biases](https://wandb.ai/) to track training
+progress. For training, we used Google Colab to run our training script.
+
+The basis for our project is the Deformable DETR project, so our codebase can
+be set up using the [installation instructions](https://github.com/fundamentalvision/Deformable-DETR#installation)
+from the Deformable DETR repo.
 
 ## Dataset
-* What dataset did we use?
-* Why was the dataset well suited for our project?
-* What other datasets might be useful for our project?
+The dataset that we used to train the model was the [COCO](https://cocodataset.org/)
+2017 dataset, though it's worth noting that we didn't always use the full
+dataset for all of our experiments. This was the dataset that the Deformable
+DETR project used, which is why we used it for our project.
 
 ## Techniques
 * What techniques did we apply to solve the problem?
 
 ## Pre-Existing Work
-* What code came from existing/prior works?
+Our repository contains the Deformable DETR repository, which we used to get
+started with our project. We then modified the Deformable DETR code to start
+work on our project and try out different experiments. The original Deformable
+DETR code still provides the foundation that our project stands on, even with
+our changes.
 
 ## New Components
-* What code did we implement?
+We added new code to send results to Weights & Biases so we could track how
+our experiments performed, which required changes to the main training script
+from the Deformable DETR codebase. We also found that we needed to adjust the
+print frequency for the training scripts as the excessive printing was causing
+Colab to crash and become unusable.
 
 ## Experiments
 * What changes did we try in order to solve the problem?
