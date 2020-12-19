@@ -1,6 +1,8 @@
 # Deformable DETR - CSE deep learning project
 Seth Vanderwilt, Zach Wilson, Zack Barnes, Richard Park
 
+## `ProjectSite.md` has more information than this stale README - please go there instead
+
 Paper here: https://arxiv.org/abs/2010.04159
 
 ## What is this?
