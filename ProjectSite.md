@@ -13,26 +13,26 @@ https://github.com/sethv/dl-dales-project/blob/main/project-video.mp4
 https://github.com/sethv/dl-dales-project
 
 ## Loss and Precision-Recall Plots
-_Note: due to Colab crashes we often had to resume runs, so the time series may look strange_
+_Note: due to Colab crashes we often had to resume runs, so the time series are messed up_
+
 https://wandb.ai/dl-project/dl-final-project/reports/Metrics-and-losses-for-our-models--VmlldzozNzI5Mzk?accessToken=qmag1px2080flylj23ha71ifed05bgqwdd22s4ys2pz33z76nyvsgnf485195vkk
 
 ## Problem Description
 Our project looks at implementing an end-to-end object detector using a modified
-version of Facebook AI's [DETR](https://github.com/facebookresearch/detr/)
-(**DE**tection **TR**ansformer) project.
-The project that we worked on is a modification of the new
+version of the new
 [Deformable DETR](https://github.com/fundamentalvision/Deformable-DETR)
-work by Xizhou Zhu, Weijie Su, Lewei Lu, Bin Li, Xiaogang Wang, and Jifeng Dai.
+project by Xizhou Zhu, Weijie Su, Lewei Lu, Bin Li, Xiaogang Wang, and Jifeng Dai,
+which in turn is a modification of Facebook AI's [DETR](https://github.com/facebookresearch/detr/)
+(**DE**tection **TR**ansformer) project.
 
-DETR (Detection Transformer) implements end-to-end object detection by feeding
+DETR (Detection Transformer) [preprint here](https://arxiv.org/abs/2010.04159) implements end-to-end object detection by feeding
 feature maps produced by a standard Resnet-50 CNN into several transformer
 encoder-decoder layers to predict bounding boxes and class labels directly.
 Most detectors use one or many complicated components like non-maximum suppression
 and anchor generation, so DETR is a much simpler approach.
 However, DETR is very slow to converge and does poorly on small objects.
-Deformable DETR modifies the original DETR model 
-by using a sampling-based attention mechanism described in their preprint, which
-you can find [here](https://arxiv.org/abs/2010.04159)
+Deformable DETR modifies the original DETR model by using a sampling-based attention mechanism
+which is described in detail in their preprint.
 Zhu et al. use the same basic architecture of feeding one or more CNN feature maps
 to a stack of transformer encoders and decoders, but they change the attention modules
 to only attend to a small sample of points around the reference, rather than every
@@ -53,15 +53,15 @@ from the Deformable DETR repo, with our revised `Deformable-DETR/requirements.tx
 
 ## Dataset
 The dataset that we used to train the model was the [COCO](https://cocodataset.org/)
-2017 dataset (118287 train/5000 val images), though it's worth noting that
-we didn't always use the full dataset for all of our experiments.
-This was the dataset that most detection researchers (including Zhu et al.) use,
+2017 detection dataset (118287 train/5000 validation images, over 300000 individual boxes),
+though we didn't use the full dataset for all of our experiments.
+This is the dataset that most detection researchers (including Zhu et al.) use,
 and it's well supported by [TorchVision](https://pytorch.org/docs/stable/torchvision/index.html)
 and other supporting libraries.
 
-Our reduced subset consisted of 5 classes (zebra, airplane, train, bear, giraffe)
-and we eliminated all annotations with 'area' < 100 pixels.
-This resulted in 11746 train/479 val images.
+Our reduced subset (results below) consisted of 5 classes (zebra, airplane, train, bear, giraffe)
+and we eliminated all annotations with an `'area'` field of < 100 pixels.
+This resulted in 11746 train/479 validation images, which was much easier to work with.
 
 ## Techniques
 Deformable-DETR uses the multi-scale feature maps output by intermediate layers
@@ -73,12 +73,21 @@ We modify `Deformable-DETR/models/backbone.py` to support the
 [MobileNetV2](https://arxiv.org/abs/1801.04381) backbone, which is often used in
 low-resource or low-latency settings (e.g. phones or other deviecs).
 In order to make this work, we perform network surgery by extracting intermediate
-layers of MobileNetV2, with 32 channels at "layer2", 96 channels at "layer3", and
-320 channels at what we call "layer4" (the last feature map before the classifier
-head, which we remove).
+layers of MobileNetV2, with 32 channels x H x W at "layer2", 96 channels x H/2 x W/2
+at "layer3", and 320 channels x H/4 x W/4 at what we call "layer4"
+(the last feature map before the classifier head, which we of course remove).
+This is to mimic what Zhu et al. do with their Resnet-50 experiments,
+where they use 512 channels at "layer2", 1024 channels at "layer3", and
+2048 channels at "layer4" (these are the Resnet layer names).
 
 We used the standard `torchvision` implementation of [MobileNetV2](https://pytorch.org/docs/stable/_modules/torchvision/models/mobilenet.html#mobilenet_v2)
 initialized with pretrained weights (from ImageNet).
+
+We follow Zhu et al. and set the learning rate for the backbone layers to 0.1x the
+learning rate of the rest of the network. We also were going to freeze the backbone
+completely to see if the transformers could take in fixed feature maps that are optimized
+for ImageNet classification and learn to do the full detection task based on these inputs,
+but we forgot to run these experiments...
 
 ## Pre-Existing Work
 Our repository contains the Deformable DETR repository, which we used to get
@@ -136,6 +145,20 @@ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.884
 This made it easy to disambiguate which dataset we were using, because to our knowledge
 nobody produces such high scores on the full COCO `val2017` dataset!
 
+Command to reproduce (with our subset of annotations in place, see the Colab notebook):
+```
+!python -u main.py \
+--output_dir output \
+--backbone mobilenet_v2 \
+--wb_name "[subset COCO] mobilenet_v2 3_enc_3_dec_dim64"
+--wb_notes "Default parameters & box refine but mobilenet_v2 backbone, reduce # of encoder decoder layers and their hidden dim"
+--enc_layers 3 \
+--dec_layers 3 \
+--hidden_dim 128 \
+--with_box_refine \
+--batch_size 4
+```
+
 ### Full COCO dataset
 
 Our best model on the full COCO dataset is still training, but is using a
@@ -159,6 +182,20 @@ IoU metric: bbox
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.233
  Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.506
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.676 
+```
+
+Command to reproduce:
+```
+!python -u main.py \
+--output_dir output \
+--backbone mobilenet_v2 \
+--wb_name "[full COCO] mobilenet_v2 2_enc_3_dec_dim64"
+--wb_notes "(Resume with same LR) Default parameters & box refine but mobilenet_v2 backbone, reduce # of encoder decoder layers and their hidden dim"
+--enc_layers 2 \
+--dec_layers 3 \
+--hidden_dim 64 \
+--with_box_refine \
+--batch_size 8
 ```
 
 We hope the run will survive on Colab and continue to improve!
