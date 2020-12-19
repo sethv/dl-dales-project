@@ -147,6 +147,8 @@ def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device):
     count = 0
 
     for samples, targets in dataloader:
+        #print(samples)
+        #print(targets)
         samples = samples.to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
         batch_size = len(targets)
@@ -174,6 +176,13 @@ def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device):
                 label = labels[j].item()
                 box = boxes[j]
 
+                if score < 0.5 :
+                    continue
+
+                #print(score)
+                #print(label)
+                #print(box)
+
                 box_data_j = {
                     "position": {
                         "minX": box[0],
@@ -183,6 +192,7 @@ def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device):
                     },
                     "class_id": label,
                     "box_caption": "%s (%.3f)" % (class_id_to_label[label], score),
+                    "domain": "pixel",
                     "scores": {"score": score}
                 }
 
