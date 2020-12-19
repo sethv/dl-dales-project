@@ -198,4 +198,10 @@ Command to reproduce:
 --batch_size 8
 ```
 
-We hope the run will survive on Colab and continue to improve!
+Running `benchmark.py` with a batch size of 1:
+```Inference Speed: 36.5 FPS```
+
+And with a batch size of 32:
+```Inference Speed: 101.1 FPS```
+
+We will attempt to resume this run from the last checkpoint to see if we can get further improvement.
