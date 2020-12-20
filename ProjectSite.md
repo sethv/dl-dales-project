@@ -42,7 +42,7 @@ Zhu et al. use the same basic architecture of feeding one or more CNN feature ma
 to a stack of transformer encoders and decoders, but they change the attention modules
 to only attend to a small sample of points around the reference, rather than every
 pixel in the feature map. This reduces the complexity and allows the model
-to converge in 90% less time (see Figure 2 of their paper)
+to converge in 90% less time (see Figure 2](https://raw.githubusercontent.com/fundamentalvision/Deformable-DETR/main/figs/convergence.png of their paper)
 
 We created a smaller version of Deformable-DETR with a smaller backbone and 
 fewer encoder-decoder layers, so that trains faster on our limited GPU resources!
@@ -189,6 +189,25 @@ IoU metric: bbox
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.698
 ```
 
+Fine-tuning from that checkpoint for 3 more epochs at a lower learning rate
+of 2e-5 further boosts the COCO metrics as suggested in Figure 2.
+![figure 2](https://raw.githubusercontent.com/fundamentalvision/Deformable-DETR/main/figs/convergence.png)
+```
+IoU metric: bbox
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.272
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.423
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.286
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.147
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.300
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.352
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.270
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.460
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.506
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.264
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.541
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.720 
+ ```
+
 Command to reproduce:
 ```
 !python -u main.py \
@@ -209,4 +228,12 @@ Running `benchmark.py` with a batch size of 1:
 And with a batch size of 32:
 ```Inference Speed: 101.1 FPS```
 
-We will attempt to resume this run from the last checkpoint to see if we can get further improvement.
+## Ideas for future experiments
+* Further search of the transformer hyperparameters
+(dimension, number of layers, number of sampling points)
+* Disable regularization (dropout in transformer layers, weight decay)
+* Replace MobileNetV2 with [EfficientNet](https://arxiv.org/abs/1905.11946)
+which offers a better speed-accuracy tradeoff and is widely used e.g. in
+[EfficientDet](https://arxiv.org/abs/1911.09070)
+* Train a segmentation head (instance or panoptic)
+* ??? - suggestions?
