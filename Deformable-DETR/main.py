@@ -510,6 +510,8 @@ def main(args):
             )
     
     if args.eval:
+
+        print("Generating visualizations...")
         visualize_bbox(model, postprocessors, data_loader_val, device, dataset_val_without_resize)
         test_stats, coco_evaluator = evaluate(model, criterion, postprocessors,
                                               data_loader_val, base_ds, device, args.output_dir)
@@ -532,7 +534,6 @@ def main(args):
                 checkpoint_file_for_wb
             ]
 
-            checkpoint_paths = [output_dir / 'checkpoint.pth']
             # extra checkpoint before LR drop and every 5 epochs
             if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % 5 == 0:
                 checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
@@ -549,6 +550,7 @@ def main(args):
             wandb.save(checkpoint_file_for_wb)
 
         # Generate visualizations for fixed(?) set of images every epoch
+        print("Generating visualizations...")
         visualize_bbox(model, postprocessors, data_loader_val, device, dataset_val_without_resize)
         test_stats, coco_evaluator = evaluate(
             model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
@@ -598,6 +600,7 @@ def main(args):
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
 
+    # print("Generating visualizations...")
     #visualize_bbox(model, postprocessors, data_loader_val, device, dataset_val_without_resize)
 
 
