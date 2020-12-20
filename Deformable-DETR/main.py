@@ -145,13 +145,6 @@ def visualize_video(model, postprocessors):
     Ideally would be able to produce an output video with labels
     """
 
-    # We want the raw images without any normalization or random resizing
-    dataset_val_without_resize = CocoDetection(
-        "data/coco/val2017",
-        annFile="data/coco/annotations/instances_val2017.json",
-        transforms=T.Compose([T.ToTensor()])
-    )
-
     model.eval()
 
     # COCO classes
@@ -248,15 +241,10 @@ def visualize_video(model, postprocessors):
 
         if vid_frame_count >= max_vid_frames:
             return
-    
+
 @torch.no_grad()
-def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device):
+def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device, dataset_val_without_resize):
     # We want the raw images without any normalization or random resizing
-    dataset_val_without_resize = CocoDetection(
-        "data/coco/val2017",
-        annFile="data/coco/annotations/instances_val2017.json",
-        transforms=T.Compose([T.ToTensor()])
-    )
 
     model.eval()
 
@@ -395,6 +383,13 @@ def main(args):
     dataset_train = build_dataset(image_set='train', args=args)
     dataset_val = build_dataset(image_set='val', args=args)
 
+    # For visualization we want the raw images without any normalization or random resizing
+    dataset_val_without_resize = CocoDetection(
+        "data/coco/val2017",
+        annFile="data/coco/annotations/instances_val2017.json",
+        transforms=T.Compose([T.ToTensor()])
+    )
+
     # Save metadata about training + val datasets and batch size
     wandb.config.len_dataset_train = len(dataset_train)
     wandb.config.len_dataset_val = len(dataset_val)
@@ -515,7 +510,7 @@ def main(args):
             )
     
     if args.eval:
-        visualize_bbox(model, postprocessors, data_loader_val, device)
+        visualize_bbox(model, postprocessors, data_loader_val, device, dataset_val_without_resize)
         test_stats, coco_evaluator = evaluate(model, criterion, postprocessors,
                                               data_loader_val, base_ds, device, args.output_dir)
         if args.output_dir:
@@ -553,6 +548,8 @@ def main(args):
              # Save model checkpoint to W&B
             wandb.save(checkpoint_file_for_wb)
 
+        # Generate visualizations for fixed(?) set of images every epoch
+        visualize_bbox(model, postprocessors, data_loader_val, device, dataset_val_without_resize)
         test_stats, coco_evaluator = evaluate(
             model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
         )
@@ -601,7 +598,7 @@ def main(args):
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
 
-    #visualize_bbox(model, postprocessors, data_loader_val, device)
+    #visualize_bbox(model, postprocessors, data_loader_val, device, dataset_val_without_resize)
 
 
 if __name__ == '__main__':
