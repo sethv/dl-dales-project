@@ -14,6 +14,7 @@ import json
 import random
 import time
 from pathlib import Path
+import os
 
 import numpy as np
 import torch
@@ -25,7 +26,11 @@ from datasets import build_dataset, get_coco_api_from_dataset
 from engine import evaluate, train_one_epoch
 from models import build_model
 
+import torchvision.transforms
 import wandb
+from datasets.torchvision_datasets.coco import CocoDetection
+import datasets.transforms as T
+import cv2
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Deformable DETR Detector', add_help=False)
@@ -133,17 +138,132 @@ def get_args_parser():
     return parser
 
 @torch.no_grad()
-def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device):
+def visualize_video(model, postprocessors):
+    """
+    Unfinished but manages to label selected frames from a video & log to W&B
+    
+    Ideally would be able to produce an output video with labels
+    """
+
+    # We want the raw images without any normalization or random resizing
+    dataset_val_without_resize = CocoDetection(
+        "data/coco/val2017",
+        annFile="data/coco/annotations/instances_val2017.json",
+        transforms=T.Compose([T.ToTensor()])
+    )
+
     model.eval()
 
-    class_id_to_label = {
-        5: "airplane",
-        7: "train",
-        23: "bear",
-        24: "zebra",
-        25: "giraffe"
-    }
-    num_img_log = 10
+    # COCO classes
+    class_id_to_label = {1: 'person', 2: 'bicycle', 3: 'car', 4: 'motorcycle', 5: 'airplane', 6: 'bus', 7: 'train', 8: 'truck', 9: 'boat', 10: 'traffic light', 11: 'fire hydrant', 13: 'stop sign', 14: 'parking meter', 15: 'bench', 16: 'bird', 17: 'cat', 18: 'dog', 19: 'horse', 20: 'sheep', 21: 'cow', 22: 'elephant', 23: 'bear', 24: 'zebra', 25: 'giraffe', 27: 'backpack', 28: 'umbrella', 31: 'handbag', 32: 'tie', 33: 'suitcase', 34: 'frisbee', 35: 'skis', 36: 'snowboard', 37: 'sports ball', 38: 'kite', 39: 'baseball bat', 40: 'baseball glove', 41: 'skateboard', 42: 'surfboard', 43: 'tennis racket', 44: 'bottle', 46: 'wine glass', 47: 'cup', 48: 'fork', 49: 'knife', 50: 'spoon', 51: 'bowl', 52: 'banana', 53: 'apple', 54: 'sandwich', 55: 'orange', 56: 'broccoli', 57: 'carrot', 58: 'hot dog', 59: 'pizza', 60: 'donut', 61: 'cake', 62: 'chair', 63: 'couch', 64: 'potted plant', 65: 'bed', 67: 'dining table', 70: 'toilet', 72: 'tv', 73: 'laptop', 74: 'mouse', 75: 'remote', 76: 'keyboard', 77: 'cell phone', 78: 'microwave', 79: 'oven', 80: 'toaster', 81: 'sink', 82: 'refrigerator', 84: 'book', 85: 'clock', 86: 'vase', 87: 'scissors', 88: 'teddy bear', 89: 'hair drier', 90: 'toothbrush'}
+
+    vid_frame_count = 0
+    max_vid_frames = 10
+    # Try reading the video
+    # path = "../project-video.mp4"
+    path = 'NEW YORK CITY 2019 - BUSY TIMES SQUARE! [4K]-WPvMlyr4H_Y.mp4'
+    assert os.path.exists(path)
+    video = cv2.VideoCapture(path)
+    # output_video = cv2.VideoWriter
+    assert video.isOpened()
+    print(video)
+    width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    frames_per_second = video.get(cv2.CAP_PROP_FPS)
+    num_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+    
+    batch_size = 1
+    for frame_idx in range(10000):
+        # print(frame_idx)
+        ret, frame = video.read()
+        if frame_idx % 30: # want to get further through video
+            continue
+        if not ret:
+            break
+        frames = [frame]
+
+        inputs = torchvision.transforms.ToTensor()(frame).to(device)
+        # inputs /= 255 # comes in as [0,255], convert to [0,1]
+        # inputs = inputs.permute(0, 3, 1, 2) # from NHWC to NCHW
+        # x = x.permute(2,0,1) # from HWC to CHW
+        inputs = torchvision.transforms.Resize((height//4, width//4))(inputs)
+        # TODO normalize!
+        normalize = torchvision.transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        inputs = normalize(inputs)
+        
+        outputs = model([inputs])
+        orig_target_sizes = torch.stack([torch.tensor([height,width])], dim=0).to(device)
+        results = postprocessors['bbox'](outputs, orig_target_sizes)
+
+        result = results[0]
+
+        scores = result['scores']
+        labels = result['labels']
+        boxes = result['boxes'].cpu()
+
+        box_data = []
+
+        # each box
+        for j in range(len(labels)):
+            score = scores[j].item()
+            label = labels[j].item()
+            box = boxes[j]
+
+            if score < 0.1 :
+                continue
+
+            box_data_j = {
+                "position": {
+                    "minX": box[0].item(),
+                    "maxX": box[2].item(),
+                    "minY": box[1].item(),
+                    "maxY": box[3].item()
+                },
+                "class_id": label,
+                "box_caption": "%s (%.3f)" % (class_id_to_label.get(label, f"unknown-label-{label}"), score),
+                "domain": "pixel",
+                "scores": {"score": score}
+            }
+
+
+            box_data.append(box_data_j)
+
+        boxes = {
+            "predictions": {
+                "box_data": box_data,
+                "class_labels": class_id_to_label
+            },
+            #"ground_truth": {} # would be nice to have
+        }
+        # print("boxes:", boxes)
+
+        if not args.no_wb:
+            img = wandb.Image(frame, boxes=boxes)
+            wandb.log({f"video{vid_frame_count}": img})
+        else:
+            from google.colab.patches import cv2_imshow
+            cv2_imshow(frame) # draw bboxes
+        
+        vid_frame_count += batch_size
+
+        if vid_frame_count >= max_vid_frames:
+            return
+    
+@torch.no_grad()
+def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device):
+    # We want the raw images without any normalization or random resizing
+    dataset_val_without_resize = CocoDetection(
+        "data/coco/val2017",
+        annFile="data/coco/annotations/instances_val2017.json",
+        transforms=T.Compose([T.ToTensor()])
+    )
+
+    model.eval()
+
+    # COCO classes
+    class_id_to_label = {1: 'person', 2: 'bicycle', 3: 'car', 4: 'motorcycle', 5: 'airplane', 6: 'bus', 7: 'train', 8: 'truck', 9: 'boat', 10: 'traffic light', 11: 'fire hydrant', 13: 'stop sign', 14: 'parking meter', 15: 'bench', 16: 'bird', 17: 'cat', 18: 'dog', 19: 'horse', 20: 'sheep', 21: 'cow', 22: 'elephant', 23: 'bear', 24: 'zebra', 25: 'giraffe', 27: 'backpack', 28: 'umbrella', 31: 'handbag', 32: 'tie', 33: 'suitcase', 34: 'frisbee', 35: 'skis', 36: 'snowboard', 37: 'sports ball', 38: 'kite', 39: 'baseball bat', 40: 'baseball glove', 41: 'skateboard', 42: 'surfboard', 43: 'tennis racket', 44: 'bottle', 46: 'wine glass', 47: 'cup', 48: 'fork', 49: 'knife', 50: 'spoon', 51: 'bowl', 52: 'banana', 53: 'apple', 54: 'sandwich', 55: 'orange', 56: 'broccoli', 57: 'carrot', 58: 'hot dog', 59: 'pizza', 60: 'donut', 61: 'cake', 62: 'chair', 63: 'couch', 64: 'potted plant', 65: 'bed', 67: 'dining table', 70: 'toilet', 72: 'tv', 73: 'laptop', 74: 'mouse', 75: 'remote', 76: 'keyboard', 77: 'cell phone', 78: 'microwave', 79: 'oven', 80: 'toaster', 81: 'sink', 82: 'refrigerator', 84: 'book', 85: 'clock', 86: 'vase', 87: 'scissors', 88: 'teddy bear', 89: 'hair drier', 90: 'toothbrush'}
+
+    num_img_log = 50
     count = 0
 
     for samples, targets in dataloader:
@@ -164,9 +284,36 @@ def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device):
             result = results[i]
             target = targets[i]
 
+            # Save for debug
+            torch.save(result, f"result{count}.pth")
+            torch.save(target, f"target{count}.pth")
+            
+            if len(target) == 0:
+                # print("no boxes, skip this image")
+                continue
+            
+            # Find the raw image matching these boxes "image_id" field
+            # TODO this will be broken for our reduced COCO dataset
+            # if we ever want to visualize results on that.
+            image_id = target["image_id"].item()  # otherwise KeyError
+            orig_size = target["orig_size"].tolist()
+            # print("original size is", orig_size)
+
+            image_path = dataset_val_without_resize.coco.loadImgs([image_id])[0]['file_name']
+            
+            # TODO use the gt
+            ann_ids = dataset_val_without_resize.coco.getAnnIds(imgIds=image_id)
+            gt = dataset_val_without_resize.coco.loadAnns(ann_ids)
+
+            image = dataset_val_without_resize.get_image(image_path)
+            assert abs(orig_size[0] - image.height) <= 1, "height mismatch"
+            assert abs(orig_size[1] - image.width) <= 1, "width mismatch"
+
+            # TODO could also show gt boxes?
+
             scores = result['scores']
             labels = result['labels']
-            boxes = result['boxes']
+            boxes = result['boxes'].cpu()
             
             box_data = []
 
@@ -176,22 +323,18 @@ def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device):
                 label = labels[j].item()
                 box = boxes[j]
 
-                if score < 0.5 :
+                if score < 0.05 :
                     continue
-
-                #print(score)
-                #print(label)
-                #print(box)
 
                 box_data_j = {
                     "position": {
-                        "minX": box[0],
-                        "maxX": box[2],
-                        "minY": box[1],
-                        "maxY": box[3]
+                        "minX": box[0].item(),
+                        "maxX": box[2].item(),
+                        "minY": box[1].item(),
+                        "maxY": box[3].item()
                     },
                     "class_id": label,
-                    "box_caption": "%s (%.3f)" % (class_id_to_label[label], score),
+                    "box_caption": "%s (%.3f)" % (class_id_to_label.get(label, f"unknown-label-{label}"), score),
                     "domain": "pixel",
                     "scores": {"score": score}
                 }
@@ -206,8 +349,9 @@ def visualize_bbox(model: torch.nn.Module, postprocessors, dataloader, device):
                 #"ground_truth": {} # would be nice to have
             }
 
-            img = wandb.Image(image, boxes)
-            wandb.log({"{}".format(count): img})
+            img = wandb.Image(image, boxes=boxes)
+            wandb.log({f"{count}": img})
+            # wandb.log({"visualized_predictions": img})
             count += 1
 
             if count > num_img_log - 1: return
@@ -235,6 +379,7 @@ def main(args):
 
     model, criterion, postprocessors = build_model(args)
     model.to(device)
+    # visualize_video(model, postprocessors)
 
     model_without_ddp = model
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -364,9 +509,9 @@ def main(args):
             )
     
     if args.eval:
+        visualize_bbox(model, postprocessors, data_loader_val, device)
         test_stats, coco_evaluator = evaluate(model, criterion, postprocessors,
                                               data_loader_val, base_ds, device, args.output_dir)
-        visualize_bbox(model, postprocessors, data_loader_val, device)
         if args.output_dir:
             utils.save_on_master(coco_evaluator.coco_eval["bbox"].eval, output_dir / "eval.pth")
         return
