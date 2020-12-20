@@ -232,8 +232,11 @@ And with a batch size of 32:
 * Further search of the transformer hyperparameters
 (dimension, number of layers, number of sampling points)
 * Disable regularization (dropout in transformer layers, weight decay)
-* Replace MobileNetV2 with [EfficientNet](https://arxiv.org/abs/1905.11946)
-which offers a better speed-accuracy tradeoff and is widely used e.g. in
-[EfficientDet](https://arxiv.org/abs/1911.09070)
+* Replace MobileNetV2 backbone with newer models that offer better speed & accuracy
+e.g. with [EfficientNet](https://arxiv.org/abs/1905.11946)
+which is widely used in detectors
+like [EfficientDet](https://arxiv.org/abs/1911.09070) and more
+* Measure performance on a worse (still CUDA only) GPU, e.g. Jetson
 * Train a segmentation head (instance or panoptic)
+* Try to learn a completely different task
 * ??? - suggestions?
