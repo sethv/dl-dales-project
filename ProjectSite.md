@@ -5,14 +5,16 @@ Group: Seth Vanderwilt, Zach Wilson, Zack Barnes, Richard Park
 https://github.com/sethv/dl-dales-project/blob/main/project-video.mp4
 
 ## Demo/try it out
-[TODO] working on producing a video like Joe's [YOLOv3](https://www.youtube.com/watch?v=MPU2HistivI)
+[TODO] working on producing a video like Joe's [YOLOv3](https://www.youtube.com/watch?v=MPU2HistivI)!
+
+See Weights & Biases report link below for some visualized predictions!
 
 [Example Colab notebook for training](https://colab.research.google.com/drive/1pVafgPzaRkVP_nuXT-Oub90Gy5xTn9Rf?usp=sharing)
 
 ## GitHub Repository
 https://github.com/sethv/dl-dales-project
 
-## Loss and Precision-Recall Plots
+## Visualizations, Losses and Precision-Recall Plots
 _Note: due to Colab crashes we often had to resume runs, so the time series are messed up_
 
 https://wandb.ai/dl-project/dl-final-project/reports/Metrics-and-losses-for-our-models--VmlldzozNzI5Mzk?accessToken=qmag1px2080flylj23ha71ifed05bgqwdd22s4ys2pz33z76nyvsgnf485195vkk
