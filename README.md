@@ -1,7 +1,12 @@
 # Deformable DETR - CSE deep learning project
 Seth Vanderwilt, Zach Wilson, Zack Barnes, Richard Park
 
-## `ProjectSite.md` has more information than this stale README - please go there instead
+![coco detection example](coco_detection_example.png)
+Example prediction output from our model, filtered by confidence threshold of 0.25
+
+## [`ProjectSite.md`](ProjectSite.md) has more information than this stale README - please go there instead
+
+## Old stuff below this line
 
 Paper here: https://arxiv.org/abs/2010.04159
 
