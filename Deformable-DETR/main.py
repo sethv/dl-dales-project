@@ -383,8 +383,14 @@ def main(args):
 
     model_without_ddp = model
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print('number of params:', n_parameters)
+    print('number of trainable params:', n_parameters)
     wandb.config.n_parameters = n_parameters
+    wandb.config.n_trainable_parameters = n_parameters  # better name
+
+    # Log total # of model parameters (including frozen) to W&B
+    n_total_parameters = sum(p.numel() for p in model.parameters())
+    print('total number of parameters:', n_total_parameters)
+    wandb.config.n_total_parameters = n_total_parameters
 
     dataset_train = build_dataset(image_set='train', args=args)
     dataset_val = build_dataset(image_set='val', args=args)
@@ -492,7 +498,7 @@ def main(args):
             for pg, pg_old in zip(optimizer.param_groups, p_groups):
                 pg['lr'] = pg_old['lr']
                 pg['initial_lr'] = pg_old['initial_lr']
-            print(optimizer.param_groups)
+            # print(optimizer.param_groups)
             lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
             # todo: this is a hack for doing experiment that resume from checkpoint and also modify lr scheduler (e.g., decrease lr in advance).
             args.override_resumed_lr_drop = True
@@ -525,6 +531,12 @@ def main(args):
             model, criterion, data_loader_train, optimizer, device, epoch, args.clip_max_norm)
         lr_scheduler.step()
         if args.output_dir:
+            checkpoint_file_for_wb = str(output_dir / f'{wandb.run.id}_checkpoint{epoch:04}.pth')
+            checkpoint_paths = [
+                output_dir / 'checkpoint.pth',
+                checkpoint_file_for_wb
+            ]
+
             checkpoint_paths = [output_dir / 'checkpoint.pth']
             # extra checkpoint before LR drop and every 5 epochs
             if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % 5 == 0:
@@ -537,6 +549,9 @@ def main(args):
                     'epoch': epoch,
                     'args': args,
                 }, checkpoint_path)
+            
+             # Save model checkpoint to W&B
+            wandb.save(checkpoint_file_for_wb)
 
         test_stats, coco_evaluator = evaluate(
             model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
@@ -567,18 +582,20 @@ def main(args):
                 (output_dir / 'eval').mkdir(exist_ok=True)
                 if "bbox" in coco_evaluator.coco_eval:
                     filenames = ['latest.pth']
+                    eval_filename_for_wb = f'{wandb.run.id}_eval_{epoch:04}.pth'
+                    eval_path_for_wb = str(output_dir / "eval" / eval_filename_for_wb)
+                    filenames = ['latest.pth', eval_filename_for_wb]
                     if epoch % 50 == 0:
                         filenames.append(f'{epoch:03}.pth')
                     for name in filenames:
                         torch.save(coco_evaluator.coco_eval["bbox"].eval,
                                    output_dir / "eval" / name)
 
-                    if epoch % 5 == 0 or epoch == args.epochs - 1:
-                        # TODO not sure if this file will end up being too big
-                        # I think it's the COCO precision/recall metrics
-                        # in some format...
-                        # let's track it just in case to start!
-                        wandb.save(f'eval/{epoch:03}.pth')
+                    # TODO not sure if this file will end up being too big
+                    # I think it's the COCO precision/recall metrics
+                    # in some format...
+                    # let's track it just in case to start!
+                    wandb.save(eval_path_for_wb)
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
