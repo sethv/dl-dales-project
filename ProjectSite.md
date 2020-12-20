@@ -1,5 +1,8 @@
-# CSE490G1 Final Project
+# CSE490G1 Final Project - smaller & faster version of Deformable DETR
 Group: Seth Vanderwilt, Zach Wilson, Zack Barnes, Richard Park
+
+![coco detection example](coco_detection_example.png)
+Example prediction output from our model, filtered by confidence threshold of 0.25
 
 ## Video
 https://github.com/sethv/dl-dales-project/blob/main/project-video.mp4
