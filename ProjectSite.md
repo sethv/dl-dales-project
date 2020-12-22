@@ -189,24 +189,28 @@ IoU metric: bbox
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.698
 ```
 
-Fine-tuning from that checkpoint for 5 more epochs (so far) at a lower
-learning rate of 2e-5 further boosts the COCO metrics as suggested in Figure 2.
+#### Post-project experiments
+Fine-tuning from that checkpoint for 7 more epochs at a lower learning rate of 2e-5
+for all trainable layers followed by 5 more epochs (bringing total to 29)
+with the backbone learning rate
+further lowered to 2e-6 further boosts the COCO metrics as suggested by Figure 2.
 ![figure 2](https://raw.githubusercontent.com/fundamentalvision/Deformable-DETR/main/figs/convergence.png)
+
 ```
 IoU metric: bbox
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.276
- Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.430
- Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.289
- Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.151
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.299
- Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.363
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.272
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.465
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.511
- Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.275
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.544
- Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.722
- ```
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.298
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.463
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.312
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.158
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.318
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.400
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.282
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.480
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.526
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.285
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.560
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.737
+```
 
 Command to reproduce:
 ```
@@ -228,15 +232,17 @@ Running `benchmark.py` with a batch size of 1:
 And with a batch size of 32:
 ```Inference Speed: 101.1 FPS```
 
-## Ideas for future experiments
-* Further search of the transformer hyperparameters
+## Ideas for further experiments
+* More search of the transformer hyperparameters
 (dimension, number of layers, number of sampling points)
+* Try two-stage version of Deformable-DETR
 * Disable regularization (dropout in transformer layers, weight decay)
-* Replace MobileNetV2 backbone with newer models that offer better speed & accuracy
-e.g. with [EfficientNet](https://arxiv.org/abs/1905.11946)
-which is widely used in detectors
-like [EfficientDet](https://arxiv.org/abs/1911.09070) and more
-* Measure performance on a worse (still CUDA only) GPU, e.g. Jetson
+* **Replace MobileNetV2 with newer backbones** that offer better speed/accuracy
+e.g. [MobileNetV3](https://arxiv.org/pdf/1905.02244.pdf),
+[MobileDets](https://arxiv.org/pdf/2004.14525.pdf) (especially for phones?),
+and [EfficientNet](https://arxiv.org/abs/1905.11946)
+to compare to [EfficientDet](https://arxiv.org/abs/1911.09070)
+* Measure performance on embedded devices, e.g. Nvidia Jetson (can't try on phone,
+Deformable DETR has CUDA dependency).
 * Train a segmentation head (instance or panoptic)
-* Try to learn a completely different task
 * ??? - suggestions?
